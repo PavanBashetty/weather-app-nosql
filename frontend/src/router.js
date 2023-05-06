@@ -5,6 +5,7 @@ import signUpComp from './components/signUpPage.vue'
 import loginComp from './components/loginPage.vue'
 import guestComp from './components/guestPage.vue'
 import aboutUsComp from './components/aboutUsPage.vue'
+import userDetailsComp from './components/userDetailsPage.vue'
 
 const routes = [
     {
@@ -36,6 +37,11 @@ const routes = [
         name:'aboutUsPage',
         path:'/aboutus',
         component: aboutUsComp
+    },
+    {
+        name:'userDetailsPage',
+        path:'/userdetails',
+        component: userDetailsComp
     }
 ];
 
