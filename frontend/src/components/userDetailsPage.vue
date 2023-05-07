@@ -14,8 +14,8 @@
         <div class="border p-2">
             <select class="border p-2 w-full" v-model="newMeasurementSystem" :disabled="showDisabledElements">
                 <option value="" disabled selected>{{ currentMeasurementSystem }}</option>
-                <option value="metric">Metric</option>
-                <option value="imperial">Imperial</option>
+                <option value="Metric">Metric</option>
+                <option value="Imperial">Imperial</option>
             </select>
         </div>
         <div><button class="block w-full p-2.5 text-black bg-blue-300 hover:bg-primary-700 focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800" v-on:click="editUserDetails()" >Edit Details</button></div>
