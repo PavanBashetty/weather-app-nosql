@@ -23,8 +23,6 @@ connectToMongoDB((err)=>{
 
 //REDIS CONNECTION
 const redisClient = redis.createClient();
-const redisSetAsync = util.promisify(redisClient.set).bind(redisClient);
-
 redisClient.on("connect", (err)=>{
     if(err) throw err;
     console.log("Redis connection is success");
@@ -72,18 +70,23 @@ app.get("/api/login/:email", (req,res)=>{
 // GET REST API METHOD TO GET USER DETAILS
 app.get("/api/userdetails/:email", (req,res)=>{
     let emailID = req.params.email;
+    let hsetKey = `userEmailID:${emailID}`;
 
-    redisClient.get(`userEmailID:${emailID}`, (err,redisGetResult)=>{
+    redisClient.hgetall(hsetKey, (err,redisHgetResult)=>{
+    //redisClient.get(`userEmailID:${emailID}`, (err,redisGetResult)=>{
         if(err) throw err;
-        if(redisGetResult !== null){
-            const docFromRedis = JSON.parse(redisGetResult);
-            console.log("Document picked from Redis");
-            res.status(200).json(docFromRedis)
+        if(redisHgetResult !== null){
+            //const docFromRedis = JSON.parse(redisGetResult);
+            console.log("Document picked from Redis HSET");
+            res.status(200).json(redisHgetResult)
         }else{
             mongodb.collection('userDetails')
             .findOne({email:emailID})
             .then(doc=>{
-                redisClient.set(`userEmailID:${emailID}`, JSON.stringify(doc), 'EX', 600);
+                for(const key in doc){
+                    redisClient.hset(hsetKey, `${key}`, `${doc[key]}`)
+                }
+                //redisClient.set(`userEmailID:${emailID}`, JSON.stringify(doc), 'EX', 600);
                 console.log("Document picked from MongoDB");
                 res.status(200).json(doc)
             })
@@ -92,27 +95,28 @@ app.get("/api/userdetails/:email", (req,res)=>{
             })
         }
     })
-
-    // mongodb.collection('userDetails')
-    // .findOne({email:emailID})
-    // .then(doc=>{
-    //     res.status(200).json(doc)
-    // })
-    // .catch(()=>{
-    //     res.status(500).json({error:'Could not fetch the data!'})
-    // })
 })
 
 // UPDATE CITY AND MEASUREMENT SYSTEM FOR A USER
 app.post("/api/saveuserchanges/:email", (req,res)=>{
     let emailID = req.params.email;
+    let hsetKey = `userEmailID:${emailID}`
     let updatedContent = req.body;
+    let newCurrentCity = req.body.currentCity;
+    let newMeasurementSystem = req.body.measurementSystem;
+ 
     mongodb.collection('userDetails')
     .updateOne({email:emailID},{$set: updatedContent})
     .then((result)=>{
+        redisClient.hmset(hsetKey, "currentCity", `${newCurrentCity}`, "measurementSystem",`${newMeasurementSystem}`)
         res.status(200).json(result)
     })
     .catch(()=>{
         res.status(500).json({error: 'Could not update the data!'})
     })
+})
+
+//GET REST API METHOD TO FETCH TODAY WEATHER DATA
+app.get("/api/gettodayweatherdata/:email", (req,res)=>{
+    let emailID = req.params.email;
 })
