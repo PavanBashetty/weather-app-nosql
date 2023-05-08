@@ -11,11 +11,13 @@
     <input type="search" id="city-search" class="block w-full p-4 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Enter a different city name..." required />
     <button type="submit" class="text-white absolute right-2.5 bottom-2.5 bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Search</button>
 </div>
-<div class="grid grid-cols-4 gap-0" style="grid-auto-rows: minmax(10px, auto); grid-auto-columns: max-content;">
+<div class="grid grid-cols-6 gap-0" style="grid-auto-rows: minmax(10px, auto); grid-auto-columns: max-content;">
     <div class="font-bold border p-2 bg-gray-300 text-gray-700">City:</div>
-    <div class="border p-2">{{ currentCity }}</div>
+    <div class="border p-2">{{ completePersonalizedWeatherData.address }}</div>
     <div class="font-bold border p-2 bg-gray-300 text-gray-700">Date:</div>
-    <div class="border p-2">{{ todayDate }}</div>
+    <div class="border p-2">{{todayDate}}</div>
+    <div class="font-bold border p-2 bg-gray-300 text-gray-700">Measurement System:</div>
+    <div class="border p-2">{{ measurementSystem }}</div>
 </div>
 <br />
 <div class="grid grid-cols-3 gap-1">
@@ -36,7 +38,7 @@
 </template>
 
 <script>
-//import axios from 'axios';
+import axios from 'axios';
 import userHeaderComp from '../components/userHeader.vue'
 export default {
     name: 'homeComp',
@@ -44,7 +46,9 @@ export default {
         return {
             email:'',
             currentCity: '',
-            todayWeather:{},
+            todayDate:'',
+            measurementSystem:'',
+            completePersonalizedWeatherData:{},
 
         }
     },
@@ -52,20 +56,25 @@ export default {
         userHeaderComp
     },
     methods:{
-        // async loadTodayWeatherData(){
-        //     await axios.get("/api/gettodayweatherdata/"+this.email)
-        //     .then((res)=>{
-
-        //     })
-        //     .catch(()=>{
-
-        //     })
-        // }
+        async loadPersonalizedWeatherData(){
+            await axios.get("/api/getpersonalizedweatherdata/"+this.email)
+            .then((res)=>{
+                let result = res.data;
+                console.log(result.personalizedWeatherDoc);
+                this.measurementSystem = result.mSystem;
+                this.completePersonalizedWeatherData = result.personalizedWeatherDoc;
+                this.todayDate = result.personalizedWeatherDoc.days[0].datetime;
+            })
+            .catch(()=>{
+                console.log("Data could not be retreived.");
+            })
+        }
     },
     mounted(){
         let localStorageEmail = localStorage.getItem("email");
         localStorageEmail = localStorageEmail.substring(1, (localStorageEmail.length - 1));
         this.email = localStorageEmail;
+        this.loadPersonalizedWeatherData();
     }
 }
 </script>
