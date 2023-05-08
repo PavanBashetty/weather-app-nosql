@@ -14,7 +14,6 @@ let mongodb;
 connectToMongoDB((err)=>{
     if(!err){
         console.log("MongoDB connection is success");
-        //Try to write data extraction from API code here with time limits
         mongodb = getDB();
     }else{
         console.log("MongoDB connection is unsucessfull");
@@ -116,7 +115,29 @@ app.post("/api/saveuserchanges/:email", (req,res)=>{
     })
 })
 
-//GET REST API METHOD TO FETCH TODAY WEATHER DATA
-app.get("/api/gettodayweatherdata/:email", (req,res)=>{
+//GET REST API METHOD TO FETCH PERSONALIZED WEATHER DATA
+app.get("/api/getpersonalizedweatherdata/:email", (req,res)=>{
     let emailID = req.params.email;
+    let hGetKey = `userEmailID:${emailID}`;
+    let cCity;
+    let mSystem;
+
+    mongodb.collection('userDetails')
+    .findOne({email:emailID},{"currentCity":1, "measurementSystem":1})
+    .then((userDoc)=>{
+        cCity = userDoc.currentCity;
+        mSystem = userDoc.measurementSystem;
+        mongodb.collection('tempWeatherData')
+        .findOne({address:cCity})
+        .then((personalizedWeatherDoc)=>{
+            res.status(200).json({personalizedWeatherDoc, mSystem})
+        })
+        .catch(()=>{
+            res.status(500).json({error:'Could not fetch personalized weather data from weather collection'})
+        })
+    })
+    .catch(()=>{
+        res.status(500).json({error:'Could not fetch personalized data from user collection'})
+    })
+
 })

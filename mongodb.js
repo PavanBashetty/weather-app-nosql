@@ -1,14 +1,19 @@
 const { MongoClient } = require("mongodb");
-const url = 'mongodb://127.0.0.1:27017/weatherApp';
+require("dotenv").config();
+//local mongodb
+//const url = 'mongodb://127.0.0.1:27017/weatherApp';
+
+//mongodb atlas
+const atlasURL = `mongodb+srv://${process.env.MONGOCLOUD_USERNAME}:${process.env.MONGOCLOUD_PASSWORD}@${process.env.MONGOCLOUD_CLUSTERNAME}/${process.env.MONGOCLOUD_DATABASE}?retryWrites=true&w=majority`;
 
 let dbConnection;
 module.exports = {
     //To connect to a database
     connectToMongoDB: (cb)=>{
-        MongoClient.connect(url)
+        MongoClient.connect(atlasURL)
         .then((client)=>{
             dbConnection = client.db()
-            console.log("Connected to MongoDB")
+            console.log("Connected to MongoDB!")
             return cb()
         })
         .catch((err)=>{
