@@ -34,9 +34,9 @@ app.listen(port, () => {
     console.log("Express server started ...");
 });
 
-app.get("/", (req, res) => {
-    res.send("Hello From The Server");
-})
+// app.get("/", (req, res) => {
+//     res.send("Hello From The Server");
+// })
 
                     //ROUTES
 //POST REST API METHOD TO ADD NEW USERS INTO THE DATABASE
@@ -76,7 +76,7 @@ app.get("/api/userdetails/:email", (req,res)=>{
         if(err) throw err;
         if(redisHgetResult !== null){
             //const docFromRedis = JSON.parse(redisGetResult);
-            console.log("Document picked from Redis HSET");
+            console.log("user detail document picked from Redis HSET");
             res.status(200).json(redisHgetResult)
         }else{
             mongodb.collection('userDetails')
@@ -85,8 +85,9 @@ app.get("/api/userdetails/:email", (req,res)=>{
                 for(const key in doc){
                     redisClient.hset(hsetKey, `${key}`, `${doc[key]}`)
                 }
+                redisClient.expire(hsetKey, 1200)
                 //redisClient.set(`userEmailID:${emailID}`, JSON.stringify(doc), 'EX', 600);
-                console.log("Document picked from MongoDB");
+                console.log("user detail document picked from MongoDB");
                 res.status(200).json(doc)
             })
             .catch(()=>{
@@ -118,18 +119,21 @@ app.post("/api/saveuserchanges/:email", (req,res)=>{
 //GET REST API METHOD TO FETCH PERSONALIZED WEATHER DATA
 app.get("/api/getpersonalizedweatherdata/:email", (req,res)=>{
     let emailID = req.params.email;
-    let hGetKey = `userEmailID:${emailID}`;
+    let hpersonalizedKey = `userEmailID:${emailID}`;
     let cCity;
     let mSystem;
 
+    //step3: check if the data is present in redis, and if so, extract from here 
     mongodb.collection('userDetails')
     .findOne({email:emailID},{"currentCity":1, "measurementSystem":1})
     .then((userDoc)=>{
         cCity = userDoc.currentCity;
+        //step1: hpersonalizedKey here with the city name
         mSystem = userDoc.measurementSystem;
         mongodb.collection('tempWeatherData')
         .findOne({address:cCity})
         .then((personalizedWeatherDoc)=>{
+            //step2: save the data in redis with expire time
             res.status(200).json({personalizedWeatherDoc, mSystem})
         })
         .catch(()=>{
@@ -140,4 +144,29 @@ app.get("/api/getpersonalizedweatherdata/:email", (req,res)=>{
         res.status(500).json({error:'Could not fetch personalized data from user collection'})
     })
 
+})
+
+
+// GET REST API METHOD TO FETCH WEATHER REPORT FOR SEARCHED CITY
+app.get("/api/getsearchedcityweatherdata/:email/:searchcity", (req,res)=>{
+    let emailID = req.params.email;
+    let searchcity = req.params.searchcity;
+    let mSystem;
+
+    mongodb.collection('userDetails')
+    .findOne({email:emailID},{"measurementSystem":1})
+    .then((userDoc)=>{
+        mSystem = userDoc.measurementSystem;
+        mongodb.collection('tempWeatherData')
+        .findOne({address: searchcity})
+        .then((searchedCityWeatherDoc)=>{
+            res.status(200).json({searchedCityWeatherDoc, mSystem})
+        })
+        .catch(()=>{
+            res.status(500).json({error:'Could not fetch searched city weather data from weather collection'})
+        })
+    })
+    .catch(()=>{
+        res.status(500).json({error:'Could not fetch personalized data from user collection'})
+    })
 })
