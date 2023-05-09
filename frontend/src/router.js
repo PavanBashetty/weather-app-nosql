@@ -6,6 +6,8 @@ import loginComp from './components/loginPage.vue'
 import guestComp from './components/guestPage.vue'
 import aboutUsComp from './components/aboutUsPage.vue'
 import userDetailsComp from './components/userDetailsPage.vue'
+import futureWeatherReportComp from './components/futureWeatherReportPage.vue'
+import historicWeatherReportComp from './components/historicWeatherReportPage.vue'
 
 const routes = [
     {
@@ -42,6 +44,16 @@ const routes = [
         name:'userDetailsPage',
         path:'/userdetails',
         component: userDetailsComp
+    },
+    {
+        name:'futureWeatherReportPage',
+        path:'/futureweatherdata',
+        component: futureWeatherReportComp
+    },
+    {
+        name:'historicWeatherReportPage',
+        path:'/historicweatherdata',
+        component: historicWeatherReportComp
     }
 ];
 
