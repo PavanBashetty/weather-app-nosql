@@ -116,28 +116,41 @@ app.post("/api/saveuserchanges/:email", (req,res)=>{
     })
 })
 
-//GET REST API METHOD TO FETCH PERSONALIZED WEATHER DATA
+//GET REST API METHOD TO FETCH A LOGGED IN USER'S PERSONALIZED WEATHER DATA
 app.get("/api/getpersonalizedweatherdata/:email", (req,res)=>{
     let emailID = req.params.email;
-    let hpersonalizedKey = `userEmailID:${emailID}`;
     let cCity;
     let mSystem;
 
-    //step3: check if the data is present in redis, and if so, extract from here 
     mongodb.collection('userDetails')
     .findOne({email:emailID},{"currentCity":1, "measurementSystem":1})
     .then((userDoc)=>{
-        cCity = userDoc.currentCity;
-        //step1: hpersonalizedKey here with the city name
         mSystem = userDoc.measurementSystem;
-        mongodb.collection('tempWeatherData')
-        .findOne({address:cCity})
-        .then((personalizedWeatherDoc)=>{
-            //step2: save the data in redis with expire time
-            res.status(200).json({personalizedWeatherDoc, mSystem})
-        })
-        .catch(()=>{
-            res.status(500).json({error:'Could not fetch personalized weather data from weather collection'})
+        cCity = userDoc.currentCity;
+
+        //step1: hpersonalizedKey here with the city name
+        let hpersonalizedKey = `userEmailID:${emailID}:${cCity}`;
+        redisClient.get(hpersonalizedKey, (err,objFromRedis)=>{
+            if(err) throw err;
+            if(objFromRedis !== null){
+                console.log("Current weather data picked from Redis SET")
+                const personalizedWeatherDoc = JSON.parse(objFromRedis)
+                res.status(200).json({personalizedWeatherDoc, mSystem})
+            }else{
+                mongodb.collection('tempWeatherData')
+                .findOne({address:cCity})
+                .then((personalizedWeatherDoc)=>{
+                    // original output object is a nested object So if you wanna go with hset, either use a recurisve function to clone everything or don't send the whole object, instead send only displayed data to frontend, it will be a simple object and can be easily stored in redis. Another option is to go with set but updating values in redis will be difficult, it works well if we are only using it to display
+
+                    redisClient.set(hpersonalizedKey, JSON.stringify(personalizedWeatherDoc))
+                    redisClient.expire(hpersonalizedKey, 900)
+                    console.log("Current weather data picked from MongoDB");
+                    res.status(200).json({personalizedWeatherDoc, mSystem})
+                })
+                .catch(()=>{
+                    res.status(500).json({error:'Could not fetch personalized weather data from weather collection'})
+                })
+            }
         })
     })
     .catch(()=>{
@@ -147,7 +160,7 @@ app.get("/api/getpersonalizedweatherdata/:email", (req,res)=>{
 })
 
 
-// GET REST API METHOD TO FETCH WEATHER REPORT FOR SEARCHED CITY
+// GET REST API METHOD TO FETCH WEATHER REPORT FOR SEARCHED CITY BY A LOGGED IN USER
 app.get("/api/getsearchedcityweatherdata/:email/:searchcity", (req,res)=>{
     let emailID = req.params.email;
     let searchcity = req.params.searchcity;
