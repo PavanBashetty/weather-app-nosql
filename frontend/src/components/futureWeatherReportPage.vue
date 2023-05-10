@@ -1,6 +1,6 @@
 <template>
     <userHeaderComp subHeaderName="Future Weather Report" />
-    
+    <div>{{ currentCity }}</div>
 </template>
 
 <script>

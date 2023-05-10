@@ -43,6 +43,9 @@ export default{
     },
     mounted(){
         let localStorageEmail = localStorage.getItem("email");
+        if(!localStorageEmail){
+            return this.$router.push({name:'loginPage'})
+        }
         localStorageEmail = localStorageEmail.substring(1, (localStorageEmail.length - 1));
         this.email = localStorageEmail;
         this.loadUserDetails();

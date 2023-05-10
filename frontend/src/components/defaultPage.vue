@@ -9,7 +9,8 @@
     <button class="bg-transparent hover:bg-blue-500 text-blue-700 font-semibold hover:text-white py-2 px-4 border border-blue-500 hover:border-transparent rounded" v-on:click="signUpPage()"><b>Sign Up</b></button>
     <button class="bg-transparent hover:bg-blue-500 text-blue-700 font-semibold hover:text-white py-2 px-4 border border-blue-500 hover:border-transparent rounded" v-on:click="loginPage()"><b>Log In</b></button>
     <button class="bg-transparent hover:bg-blue-500 text-blue-700 font-semibold hover:text-white py-2 px-4 border border-blue-500 hover:border-transparent rounded" v-on:click="guestPage()"><b>Guest</b></button>
-    <p>Add a few prelogged in buttons</p>
+    <button class="bg-transparent hover:bg-blue-500 text-blue-700 font-semibold hover:text-white py-2 px-4 border border-blue-500 hover:border-transparent rounded" v-on:click="loginAsPavan()"><b>Log in as Pavan</b></button>
+    <button class="bg-transparent hover:bg-blue-500 text-blue-700 font-semibold hover:text-white py-2 px-4 border border-blue-500 hover:border-transparent rounded" v-on:click="loginAsSrujana()"><b>Log in as Srujana</b></button>
 </div>
 
 <hr />
@@ -41,6 +42,15 @@ export default {
             return this.$router.push({
                 name: 'aboutUsPage'
             })
+        },
+        loginAsPavan(){
+            //use localstorage
+        }
+    },
+    mounted(){
+        let userEmail = localStorage.getItem('email')
+        if(userEmail != null){
+            return this.$router.push({name:'homePage'})
         }
     }
 }

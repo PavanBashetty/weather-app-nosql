@@ -1,14 +1,22 @@
 <template>
     <userHeaderComp subHeaderName="Historic Weather Report" />
-    Historic weather report page
+    <div>Your city: {{ currentCity }}</div>
 </template>
 
 <script>
 import userHeaderComp from '../components/userHeader.vue'
 export default{
     name:'historicWeatherReportComp',
+    data(){
+        return{
+            currentCity:''
+        }
+    },
     components:{
         userHeaderComp
+    },
+    created(){
+        this.currentCity = this.$route.params.cCity
     }
 }
 </script>

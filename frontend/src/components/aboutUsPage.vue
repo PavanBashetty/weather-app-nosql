@@ -20,6 +20,12 @@ export default {
                 name: 'defaultPage'
             })
         }
+    },
+    mounted(){
+        let userEmail = localStorage.getItem('email')
+        if(userEmail != null){
+            return this.$router.push({name:'homePage'})
+        }
     }
 }
 </script>

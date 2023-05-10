@@ -15,7 +15,7 @@
     <div class="font-bold border p-2 bg-gray-300 text-gray-700">City:</div>
     <div class="border p-2">{{ currentCity }}</div>
     <div class="font-bold border p-2 bg-gray-300 text-gray-700">Date:</div>
-    <div class="border p-2">{{completeMetricWeatherData.datetime}}</div>
+    <div class="border p-2">{{completeWeatherData.datetime}}</div>
     <div class="font-bold border p-2 bg-gray-300 text-gray-700">Measurement System:</div>
     <div class="border p-2">{{ measurementSystem }}</div>
 </div>
@@ -23,11 +23,20 @@
 <div class="grid grid-cols-3 gap-0 bg-orange-100 text-gray-700 border-4">
     <div class="p-0 grid grid-cols-2 gap-0 border-4">
         <div class="font-bold  bg-orange-100 text-gray-700">Min Temp:</div>
-        <div>{{ completeMetricWeatherData.tempmin }}</div>
+        <div>
+            {{ completeWeatherData.tempmin }} 
+            <span v-if="measurementSystem == 'Metric'">°C</span><span v-else>°F</span>
+        </div>
         <div class="font-bold bg-orange-100 text-gray-700">Max Temp:</div>
-        <div>{{ completeMetricWeatherData.tempmax }}</div>
+        <div>
+            {{ completeWeatherData.tempmax }}
+            <span v-if="measurementSystem == 'Metric'">°C</span><span v-else>°F</span>
+        </div>
         <div class="font-bold bg-orange-100 text-gray-700">Temp:</div>
-        <div>{{ completeMetricWeatherData.temp }}</div>
+        <div>
+            {{ completeWeatherData.temp }}
+            <span v-if="measurementSystem == 'Metric'">°C</span><span v-else>°F</span>
+        </div>
         <div></div>
         <div></div>
         <div></div>
@@ -35,33 +44,49 @@
     </div>
     <div class="border-4 p-0 grid grid-cols-2 gap-1">
         <div class="font-bold bg-orange-100 text-gray-700">Humidity:</div>
-        <div>{{ completeMetricWeatherData.humidity }}</div>
+        <div>
+            {{ completeWeatherData.humidity }}
+        </div>
         <div class="font-bold bg-orange-100 text-gray-700">Snow:</div>
-        <div>{{ completeMetricWeatherData.snow }}</div>
+        <div>
+            {{ completeWeatherData.snow }}
+            <span v-if="measurementSystem == 'Metric'">mm</span><span v-else>inches</span>
+        </div>
         <div class="font-bold bg-orange-100 text-gray-700">Windspeed:</div>
-        <div>{{ completeMetricWeatherData.windspeed }}</div>
+        <div>
+            {{ completeWeatherData.windspeed }}
+            <span v-if="measurementSystem == 'Metric'">kmph</span><span v-else>mph</span>
+        </div>
         <div class="font-bold bg-orange-100 text-gray-700">Cloud cover:</div>
-        <div>{{ completeMetricWeatherData.cloudcover }}</div>
+        <div>
+            {{ completeWeatherData.cloudcover }}
+            <span v-if="measurementSystem == 'Metric'">Octas</span><span v-else>Eights</span>
+        </div>
         <div class="font-bold bg-orange-100 text-gray-700">Visibility:</div>
-        <div>{{ completeMetricWeatherData.visibility }}</div>
+        <div>
+            {{ completeWeatherData.visibility }}
+            <span v-if="measurementSystem == 'Metric'">km</span><span v-else>mi</span>
+        </div>
     </div>
-    <div class="border-4 p-0">
+    <!-- <div class="border-4 p-0">
         google maps
-    </div>
+    </div> -->
 </div>
 <br />
 <div class="border-4 p-0 grid grid-cols-2 gap-0">
     <div class="border-4 p-2 grid grid-cols-2 gap-1">
         <div class="font-bold">Sunrise:</div>
-        <div>{{ completeMetricWeatherData.sunrise }}</div>
+        <div>{{ completeWeatherData.sunrise }}</div>
         <div class="font-bold">Sunset:</div>
-        <div>{{ completeMetricWeatherData.sunset }}</div>
+        <div>{{ completeWeatherData.sunset }}</div>
         <div class="font-bold">Solar radiation:</div>
-        <div>{{ completeMetricWeatherData.solarradiation }}</div>
+        <div>
+            {{ completeWeatherData.solarradiation }}
+        </div>
     </div>
     <div class="border-4 p-2 grid grid-cols-1 gap-1">
         <div class="font-bold text-center">Verdict:</div>
-        <div class="text-center">{{ completeMetricWeatherData.description }}</div>
+        <div class="text-center">{{ completeWeatherData.description }}</div>
     </div>
 </div>
 <br />
@@ -82,8 +107,8 @@ export default {
             currentCity: '',
             searchCity:'',
             measurementSystem:'',
-            completeMetricWeatherData:{},
-            completeImperialWeatherData:{}
+            completeWeatherData:{}
+            
 
         }
     },
@@ -97,7 +122,28 @@ export default {
                 let result = res.data;
                 this.measurementSystem = result.mSystem;
                 this.currentCity = result.personalizedWeatherDoc.address;
-                this.completeMetricWeatherData = result.personalizedWeatherDoc.days[0];
+                let fetchedWeatherData = result.personalizedWeatherDoc.days[0];
+                if(this.measurementSystem == 'Metric'){
+                    this.completeWeatherData = fetchedWeatherData
+                }else{
+                    this.completeWeatherData = {}
+                    this.completeWeatherData = {
+                        datetime: this.dateMetricToImp(fetchedWeatherData.datetime),
+                        tempmin: this.celsiusToFahrenheit(fetchedWeatherData.tempmin),
+                        tempmax: this.celsiusToFahrenheit(fetchedWeatherData.tempmax),
+                        temp: this.celsiusToFahrenheit(fetchedWeatherData.temp),
+                        humidity: this.humidityMetToImp(fetchedWeatherData.humidity),
+                        snow: this.snowMiliMetersToInches(fetchedWeatherData.snow),
+                        windspeed: this.windspeedKmtoMph(fetchedWeatherData.windspeed),
+                        cloudcover: this.cloudcoverOctasToEight(fetchedWeatherData.cloudcover),
+                        visibility: this.visibilityKmtoMiles(fetchedWeatherData.visibility),
+                        sunrise: fetchedWeatherData.sunrise,
+                        sunset: fetchedWeatherData.sunset,
+                        solarradiation: fetchedWeatherData.solarradiation,
+                        description: fetchedWeatherData.description
+                    }
+                }
+            
             })
             .catch(()=>{
                 console.log("Data could not be retreived.");
@@ -107,28 +153,81 @@ export default {
             await axios.get("/api/getsearchedcityweatherdata/"+this.email+"/"+this.searchCity)
             .then((res)=>{
                 let result = res.data;
+                console.log(result);
                 this.measurementSystem = result.mSystem;
                 this.currentCity = result.searchedCityWeatherDoc.address;
-                this.completeMetricWeatherData = result.searchedCityWeatherDoc.days[0];
+                let fetchedWeatherData = result.searchedCityWeatherDoc.days[0];
+                this.completeWeatherData = {}
+                if(this.measurementSystem == 'Metric'){
+                    this.completeWeatherData = fetchedWeatherData
+                }else{
+                    this.completeWeatherData = {
+                        datetime: this.dateMetricToImp(fetchedWeatherData.datetime),
+                        tempmin: this.celsiusToFahrenheit(fetchedWeatherData.tempmin),
+                        tempmax: this.celsiusToFahrenheit(fetchedWeatherData.tempmax),
+                        temp: this.celsiusToFahrenheit(fetchedWeatherData.temp),
+                        humidity: this.humidityMetToImp(fetchedWeatherData.humidity),
+                        snow: this.snowMiliMetersToInches(fetchedWeatherData.snow),
+                        windspeed: this.windspeedKmtoMph(fetchedWeatherData.windspeed),
+                        cloudcover: this.cloudcoverOctasToEight(fetchedWeatherData.cloudcover),
+                        visibility: this.visibilityKmtoMiles(fetchedWeatherData.visibility),
+                        sunrise: fetchedWeatherData.sunrise,
+                        sunset: fetchedWeatherData.sunset,
+                        solarradiation: fetchedWeatherData.solarradiation,
+                        description: fetchedWeatherData.description
+                    }
+                }
 
             })
             .catch(()=>{
+                this.completeWeatherData = {}
                 console.log("Data for searched city could not be retreived");
             })
         },
         toHistoricWeatherReportPage(){
-            return this.$router.push({name:'historicWeatherReportPage'})
+            return this.$router.push({
+                name:'historicWeatherReportPage',
+                params:{cCity: this.currentCity}
+            })
         },
         toFutureWeatherReportPage(){
-            this.$emit('currentCity', this.currentCity)
             return this.$router.push({
                 name:'futureWeatherReportPage',
                 params:{cCity: this.currentCity}
             })
+        },
+        celsiusToFahrenheit(celsius){
+            return ((celsius * 9/5) + 32).toFixed(1)
+        },
+        dateMetricToImp(currDate){
+            const metricDate = new Date(currDate);
+            const year = metricDate.getFullYear();
+            const month = metricDate.getMonth() + 1;
+            const day = metricDate.getDate();
+            const imperialDate = `${month}-${day}-${year}`
+            return imperialDate
+        },
+        snowMiliMetersToInches(mm){
+            return (mm*0.03937).toFixed(2)
+        },
+        windspeedKmtoMph(kmph){
+            return (kmph*2.23694).toFixed(2)
+        },
+        visibilityKmtoMiles(km){
+            return (km*0.621371).toFixed(2)
+        },
+        cloudcoverOctasToEight(octas){
+            return (octas*0.03937).toFixed(2)
+        },
+        humidityMetToImp(metricHumidity){
+            return metricHumidity*100
         }
     },
     mounted(){
         let localStorageEmail = localStorage.getItem("email");
+        if(!localStorageEmail){
+            return this.$router.push({name:'loginPage'})
+        }
         localStorageEmail = localStorageEmail.substring(1, (localStorageEmail.length - 1));
         this.email = localStorageEmail;
         this.loadPersonalizedWeatherData();
