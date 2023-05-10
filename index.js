@@ -2,6 +2,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const redis = require("redis");
 const {connectToMongoDB, getDB} = require("./mongodb");
+const {connectToMongoHistDB, getHistDB} = require("./mongodbHist")
 const {json} = require("body-parser");
 const util = require("util");
 
@@ -9,14 +10,25 @@ const app = express();
 app.use(express.json());
 app.use(bodyParser());
 
-//MONGODB CONNECTION
+//MONGODB CONNECTION -- To Current Climate Record DB
 let mongodb;
 connectToMongoDB((err)=>{
     if(!err){
-        console.log("MongoDB connection is success");
+        console.log("MongoDB connection to current climate DB is success");
         mongodb = getDB();
     }else{
-        console.log("MongoDB connection is unsucessfull");
+        console.log("MongoDB connection to current climate DB is unsucessfull");
+    }
+})
+
+//MONGODB CONNECTION -- To Historic Climate Record DB
+let mongodbHist;
+connectToMongoHistDB((err)=>{
+    if(!err){
+        console.log("MongoDB connection to historic climate DB is success");
+        mongodbHist = getHistDB();
+    }else{
+        console.log("MongoDB connection to historic climate DB is unsucessfull");
     }
 })
 
@@ -34,9 +46,6 @@ app.listen(port, () => {
     console.log("Express server started ...");
 });
 
-// app.get("/", (req, res) => {
-//     res.send("Hello From The Server");
-// })
 
                     //ROUTES
 //POST REST API METHOD TO ADD NEW USERS INTO THE DATABASE
@@ -127,6 +136,7 @@ app.get("/api/getpersonalizedweatherdata/:email", (req,res)=>{
     .then((userDoc)=>{
         mSystem = userDoc.measurementSystem;
         cCity = userDoc.currentCity;
+        let todayDate = new Date().toISOString().split('T')[0];
 
         //step1: hpersonalizedKey here with the city name
         let hpersonalizedKey = `userEmailID:${emailID}:${cCity}`;
@@ -138,10 +148,10 @@ app.get("/api/getpersonalizedweatherdata/:email", (req,res)=>{
                 res.status(200).json({personalizedWeatherDoc, mSystem})
             }else{
                 mongodb.collection('tempWeatherData')
-                .findOne({address:cCity})
+                .findOne({address:cCity, 'days.datetime':{$eq:`${todayDate}`}})
                 .then((personalizedWeatherDoc)=>{
                     // original output object is a nested object So if you wanna go with hset, either use a recurisve function to clone everything or don't send the whole object, instead send only displayed data to frontend, it will be a simple object and can be easily stored in redis. Another option is to go with set but updating values in redis will be difficult, it works well if we are only using it to display
-
+                    // So three options: 1. fetch only required fields 2. fetch all fields but store only required fields using hmset 3. use set instead of hset
                     redisClient.set(hpersonalizedKey, JSON.stringify(personalizedWeatherDoc))
                     redisClient.expire(hpersonalizedKey, 900)
                     console.log("Current weather data picked from MongoDB");
@@ -165,13 +175,14 @@ app.get("/api/getsearchedcityweatherdata/:email/:searchcity", (req,res)=>{
     let emailID = req.params.email;
     let searchcity = req.params.searchcity;
     let mSystem;
+    let todayDate = new Date().toISOString().split('T')[0];
 
     mongodb.collection('userDetails')
     .findOne({email:emailID},{"measurementSystem":1})
     .then((userDoc)=>{
         mSystem = userDoc.measurementSystem;
         mongodb.collection('tempWeatherData')
-        .findOne({address: searchcity})
+        .findOne({address: searchcity, 'days.datetime':{$eq:`${todayDate}`}})
         .then((searchedCityWeatherDoc)=>{
             res.status(200).json({searchedCityWeatherDoc, mSystem})
         })
