@@ -44,7 +44,14 @@ export default {
             })
         },
         loginAsPavan(){
-            //use localstorage
+            localStorage.setItem("user-name", '"pavan"');
+            localStorage.setItem("email", '"pavankumar.rb25@gmail.com"');
+            this.$router.push({name: 'homePage'})
+        },
+        loginAsSrujana(){
+            localStorage.setItem("user-name", '"Srujana"');
+            localStorage.setItem("email", '"sru@gmail.com"');
+            this.$router.push({name: 'homePage'})
         }
     },
     mounted(){

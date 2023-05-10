@@ -6,13 +6,17 @@
                 <img src="../assets/weatherApp01.png" class="mr-1 h-6 sm:h-9 rounded-full" alt="Flowbite Logo" />
                 <span class="self-center text-2xl font-bold whitespace-nowrap dark:text-blue">Weather App</span>
             </div>
-
-            <div class="hidden justify-between items-center w-full lg:flex lg:w-auto lg:order-2" id="mobile-menu-2">
-                <ul class="flex flex-col mt-4 font-medium lg:flex-row lg:space-x-4 lg:mt-0">
-                    <li><button class="bg-gray-700 hover:bg-gray-600 text-white py-2 px-1 rounded" type="button" v-on:click="backToDefaultPage()">Home</button></li>
-
-                </ul>
+            
+            <!--This div is written to make sure 'sub header name' aligns in center-->
+            <div class="hidden justify-between items-center w-full lg:flex lg:w-auto lg:order-2">
+                <p class="text-sky-300">qqqqqqqqqqqqqqaaaaaaaa</p>
             </div>
+
+            <div class="align-center lg:order-1">
+                <h1 class="font-serif text-xl font-extralight text-black-600">{{ subHeaderName }}</h1>
+            </div>
+
+
         </div>
     </nav>
 </header>
@@ -20,7 +24,10 @@
 
 <script>
 export default{
-    name:'guestHeaderComp'
+    name:'guestHeaderComp',
+    props:{
+        subHeaderName: String
+    }
 }
 </script>
 

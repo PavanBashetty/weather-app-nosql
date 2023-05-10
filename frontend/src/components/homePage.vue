@@ -46,11 +46,12 @@
         <div class="font-bold bg-orange-100 text-gray-700">Humidity:</div>
         <div>
             {{ completeWeatherData.humidity }}
+            <span>g/m³</span>
         </div>
         <div class="font-bold bg-orange-100 text-gray-700">Snow:</div>
         <div>
             {{ completeWeatherData.snow }}
-            <span v-if="measurementSystem == 'Metric'">mm</span><span v-else>inches</span>
+            <span v-if="measurementSystem == 'Metric'">mm</span><span v-else>in</span>
         </div>
         <div class="font-bold bg-orange-100 text-gray-700">Windspeed:</div>
         <div>
@@ -60,7 +61,7 @@
         <div class="font-bold bg-orange-100 text-gray-700">Cloud cover:</div>
         <div>
             {{ completeWeatherData.cloudcover }}
-            <span v-if="measurementSystem == 'Metric'">Octas</span><span v-else>Eights</span>
+            <span v-if="measurementSystem == 'Metric'">oktas</span><span v-else>eighths</span>
         </div>
         <div class="font-bold bg-orange-100 text-gray-700">Visibility:</div>
         <div>
@@ -122,7 +123,14 @@ export default {
                 let result = res.data;
                 this.measurementSystem = result.mSystem;
                 this.currentCity = result.personalizedWeatherDoc.address;
-                let fetchedWeatherData = result.personalizedWeatherDoc.days[0];
+                let fetchedWeatherData;
+                let todayDate = new Date().toISOString().split('T')[0];
+                for(let i = 0; i<result.personalizedWeatherDoc.days.length;i++){
+                    if(result.personalizedWeatherDoc.days[i].datetime == todayDate){
+                        fetchedWeatherData = result.personalizedWeatherDoc.days[i];
+                    }
+                }
+                //fetchedWeatherData = result.personalizedWeatherDoc.days[0];
                 if(this.measurementSystem == 'Metric'){
                     this.completeWeatherData = fetchedWeatherData
                 }else{
@@ -156,8 +164,15 @@ export default {
                 console.log(result);
                 this.measurementSystem = result.mSystem;
                 this.currentCity = result.searchedCityWeatherDoc.address;
-                let fetchedWeatherData = result.searchedCityWeatherDoc.days[0];
+                let fetchedWeatherData;
+                // let fetchedWeatherData = result.searchedCityWeatherDoc.days[0];
                 this.completeWeatherData = {}
+                let todayDate = new Date().toISOString().split('T')[0];
+                for(let i=0; i<result.searchedCityWeatherDoc.days.length;i++){
+                    if(result.searchedCityWeatherDoc.days[i].datetime == todayDate){
+                        fetchedWeatherData = result.searchedCityWeatherDoc.days[i]
+                    }
+                }
                 if(this.measurementSystem == 'Metric'){
                     this.completeWeatherData = fetchedWeatherData
                 }else{
@@ -177,10 +192,11 @@ export default {
                         description: fetchedWeatherData.description
                     }
                 }
-
+                this.searchCity = ''
             })
             .catch(()=>{
                 this.completeWeatherData = {}
+                this.searchCity = ''
                 console.log("Data for searched city could not be retreived");
             })
         },
