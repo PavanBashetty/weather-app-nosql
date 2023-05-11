@@ -22,7 +22,7 @@
 <br />
 
 <div class="grid grid-cols-3 gap-0 bg-orange-100 text-gray-700 border-4">
-    <div class="p-0 grid grid-cols-2 gap-0 border-4">
+    <div class="p-0 grid grid-cols-2 gap-2 border-4">
         <div class="font-bold  bg-orange-100 text-gray-700">Min Temp:</div>
         <div>
             {{compeletWeatherData.tempmin }}
@@ -45,16 +45,7 @@
     </div>
 
     <div class="border-4 p-0 grid grid-cols-2 gap-1">
-        <div class="font-bold bg-orange-100 text-gray-700">Humidity:</div>
-        <div>
-            {{compeletWeatherData.humidity }}
-            <span>g/m³</span>
-        </div>
-        <div class="font-bold bg-orange-100 text-gray-700">Snow:</div>
-        <div>
-            {{ compeletWeatherData.snow}}
-            <span>mm</span>
-        </div>
+
         <div class="font-bold bg-orange-100 text-gray-700">Windspeed:</div>
         <div>
             {{compeletWeatherData.windspeed }}
@@ -72,7 +63,23 @@
         </div>
     </div>
 
-    <!-- <div></div> -->
+    <div class="border-4 p-0 grid grid-cols-2 gap-1">
+        <div class="font-bold bg-orange-100 text-gray-700">Precipitation:</div>
+        <div>
+            {{ compeletWeatherData.precip }}
+            <span>mm</span>
+        </div>
+        <div class="font-bold bg-orange-100 text-gray-700">Humidity:</div>
+        <div>
+            {{compeletWeatherData.humidity }}
+            <span>g/m³</span>
+        </div>
+        <div class="font-bold bg-orange-100 text-gray-700">Snow:</div>
+        <div>
+            {{ compeletWeatherData.snow}}
+            <span>mm</span>
+        </div>
+    </div>
 </div>
 <br />
 <div class="border-4 p-0 grid grid-cols-2 gap-0">
@@ -122,8 +129,9 @@ export default {
          await axios.get("/api/getsearchedcitydataforguest/"+this.searchCity)
          .then((res)=>{
             let result = res.data;
+            console.log(result);
             this.mentionedCity = result.address;
-            this.compeletWeatherData = result.days[0]
+            this.compeletWeatherData = result
             this.searchCity = ''
          })
          .catch(()=>{
@@ -132,13 +140,13 @@ export default {
             this.searchCity = ''
          })
         }
+    },
+    mounted(){
+        let userEmail = localStorage.getItem('email')
+        if(userEmail != null){
+            return this.$router.push({name:'homePage'})
+        }
     }
-    // mounted(){
-    //     let userEmail = localStorage.getItem('email')
-    //     if(userEmail != null){
-    //         return this.$router.push({name:'homePage'})
-    //     }
-    // }
 }
 </script>
 
