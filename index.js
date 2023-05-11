@@ -47,7 +47,7 @@ app.listen(port, () => {
 });
 
 
-//ROUTES
+                        //ROUTES
 //POST REST API METHOD TO ADD NEW USERS INTO THE DATABASE
 app.post("/api/signup", (req, res) => {
     let newUserEntry = req.body;
@@ -143,32 +143,41 @@ app.get("/api/getpersonalizedweatherdata/:email", (req, res) => {
             }
             let year = new Date().getFullYear();
             let mongodbCollectionName = `${cCity}_${month}_${year}`;
-
-            //step1: hpersonalizedKey here with the city name
             let hpersonalizedKey = `userEmailID:${emailID}:${cCity}`;
+
             redisClient.get(hpersonalizedKey, (err, objFromRedis) => {
                 if (err) throw err;
                 if (objFromRedis !== null) {
                     console.log("Current weather data picked from Redis SET")
                     const personalizedWeatherDoc = JSON.parse(objFromRedis)
                     res.status(200).json({ personalizedWeatherDoc, mSystem })
-                    } else {
-                        mongodb.collection(`${mongodbCollectionName}`)
-                            .findOne({address:cCity, 'days.datetime':{$eq:`${todayDate}`}})
-                            .then((personalizedWeatherDoc) => {
-                                //instead of sending the data only for the current date, it is sending the whole object so extra filters had to added on frontend
+                } else {
+                    mongodb.collection(`${mongodbCollectionName}`)
+                        .findOne({ address: cCity, 'days.datetime': { $eq: `${todayDate}` } })
+                        .then((wholeWeatherDoc) => {
+                            //instead of sending the data only for the current date[because dates are in nested object], it is sending the whole object so a for loop is added
+                            let personalizedWeatherDoc;
+                            for (let i = 0; i < wholeWeatherDoc.days.length; i++) {
+                                if (wholeWeatherDoc.days[i].datetime == todayDate) {
+                                    personalizedWeatherDoc = wholeWeatherDoc.days[i]
+                                }
+                            }
+                            personalizedWeatherDoc['address'] = wholeWeatherDoc.address;
 
-                                // original output object is a nested object So if you wanna go with hset, either use a recurisve function to clone everything or don't send the whole object, instead send only displayed data to frontend, it will be a simple object and can be easily stored in redis. Another option is to go with set but updating values in redis will be difficult, it works well if we are only using it to display
-                                // So three options: 1. fetch only required fields 2. fetch all fields but store only required fields using hmset 3. use set instead of hset
-                                redisClient.set(hpersonalizedKey, JSON.stringify(personalizedWeatherDoc))
-                                redisClient.expire(hpersonalizedKey, 900)
-                                console.log("Current weather data picked from MongoDB");
-                                res.status(200).json({ personalizedWeatherDoc, mSystem })
-                            })
-                            .catch(() => {
-                                res.status(500).json({ error: 'Could not fetch personalized weather data from weather collection' })
-                            })
-                    }
+                            // original object is a nested object So if you wanna go with hset, either use a recurisve function to clone everything or don't send the whole object instead send only displayed data to frontend, it will be a simple object and can be easily stored in redis. Another option is to go with set but updating values in redis will be difficult, it works well if we are only using it to display
+                            
+                            // [It is sending the whole thing because its just one object. This is the case for currentClimateRecordDB. Here, every city has only one object for each month. Within this, nested objects are present for each date. Whereas in HistoricClimateRecordDB, every city has one collection for each month and in each collection 30/31 objects are present, one for every date]
+
+                            // So three options: 1. fetch only required fields 2. fetch all fields but store only required fields using hmset 3. use set instead of hset
+                            redisClient.set(hpersonalizedKey, JSON.stringify(personalizedWeatherDoc))
+                            redisClient.expire(hpersonalizedKey, 900)
+                            console.log("Current weather data picked from MongoDB");
+                            res.status(200).json({ personalizedWeatherDoc, mSystem })
+                        })
+                        .catch(() => {
+                            res.status(500).json({ error: 'Could not fetch personalized weather data from weather collection' })
+                        })
+                }
             })
         })
         .catch(() => {
@@ -189,19 +198,22 @@ app.get("/api/getsearchedcityweatherdata/:email/:searchcity", (req, res) => {
         .findOne({ email: emailID }, { "measurementSystem": 1 })
         .then((userDoc) => {
             mSystem = userDoc.measurementSystem;
-            //let todayDate = new Date().toISOString().split('T')[0];
             let month = new Date().getMonth() + 1;
             if (month < 10) {
                 month = '0' + month;
             }
             let year = new Date().getFullYear();
             let mongodbCollectionName = `${searchcity}_${month}_${year}`;
-
-            
             mongodb.collection(`${mongodbCollectionName}`)
                 .findOne({ address: searchcity, 'days.datetime': { $eq: `${todayDate}` } })
-                .then((searchedCityWeatherDoc) => {
-                    console.log(searchedCityWeatherDoc);
+                .then((searchedCityWholeWeatherDoc) => {
+                    let searchedCityWeatherDoc;
+                    for (let i = 0; i < searchedCityWholeWeatherDoc.days.length; i++) {
+                        if (searchedCityWholeWeatherDoc.days[i].datetime == todayDate) {
+                            searchedCityWeatherDoc = searchedCityWholeWeatherDoc.days[i]
+                        }
+                    }
+                    searchedCityWeatherDoc['address'] = searchedCityWholeWeatherDoc.address
                     res.status(200).json({ searchedCityWeatherDoc, mSystem })
                 })
                 .catch(() => {
@@ -217,14 +229,87 @@ app.get("/api/getsearchedcityweatherdata/:email/:searchcity", (req, res) => {
 app.get("/api/getsearchedcitydataforguest/:searchcity", (req, res) => {
     let searchcity = req.params.searchcity;
     let todayDate = new Date().toISOString().split('T')[0];
+    let month = new Date().getMonth() + 1;
+    if (month < 10) {
+        month = '0' + month;
+    }
+    let year = new Date().getFullYear();
+    let mongodbCollectionName = `${searchcity}_${month}_${year}`;
+    let hGuestSearchKey = `City: ${searchcity}`
 
-    //use redis here also using city name
-    mongodb.collection('tempWeatherData')
-        .findOne({ address: searchcity, 'days.datetime': { $eq: `${todayDate}` } })
-        .then((searchedCityWeatherDoc) => {
+    redisClient.get(hGuestSearchKey, (err, objFromRedis) => {
+        if (err) throw err;
+        if (objFromRedis !== null) {
+            console.log("Data for searched city by guest is picked from Redis SET");
+            const searchedCityWeatherDoc = JSON.parse(objFromRedis)
             res.status(200).json(searchedCityWeatherDoc)
+        } else {
+            mongodb.collection(`${mongodbCollectionName}`)
+                .findOne({ address: searchcity, 'days.datetime': { $eq: `${todayDate}` } })
+                .then((searchedCityWholeWeatherDoc) => {
+                    let searchedCityWeatherDoc;
+                    for (let i = 0; i < searchedCityWholeWeatherDoc.days.length; i++) {
+                        if (searchedCityWholeWeatherDoc.days[i].datetime == todayDate) {
+                            searchedCityWeatherDoc = searchedCityWholeWeatherDoc.days[i]
+                        }
+                    }
+                    searchedCityWeatherDoc['address'] = searchedCityWholeWeatherDoc.address
+                    redisClient.set(hGuestSearchKey, JSON.stringify(searchedCityWeatherDoc))
+                    redisClient.expire(hGuestSearchKey, 600)
+                    console.log("Data for searched city by guest is picked from MongoDB");
+                    res.status(200).json(searchedCityWeatherDoc)
+                })
+                .catch(() => {
+                    res.status(500).json({ error: 'Could not fetch searched city weather data from weather collection' })
+                })
+        }
+    })
+
+})
+
+
+//GET REST API METHOD TO FETCH FUTURE DATA FOR A CITY
+app.get("/api/getfeatureweatherdata/:currentcity", (req, res) => {
+    let currentCity = req.params.currentcity;
+    let todayDate = new Date().toISOString().split('T')[0];
+    let month = new Date().getMonth() + 1;
+    if (month < 10) {
+        month = '0' + month;
+    }
+    let year = new Date().getFullYear();
+    let mongodbCollectionName = `${currentCity}_${month}_${year}`;
+
+    mongodb.collection(`${mongodbCollectionName}`)
+        .findOne({ address: currentCity })
+        .then((wholeWeatherDoc) => {
+            let futureWeatherDoc = []
+            for (let i = 0; i < wholeWeatherDoc.days.length; i++) {
+                if ((wholeWeatherDoc.days[i].datetime > todayDate) && futureWeatherDoc.length <= 10) {
+                    futureWeatherDoc.push(wholeWeatherDoc.days[i])
+                }
+            }
+            res.status(200).json(futureWeatherDoc)
         })
         .catch(() => {
-            res.status(500).json({ error: 'Could not fetch searched city weather data from weather collection' })
+            res.status(500).json({ error: 'Could not get future weather data from weather collection' })
         })
+})
+
+  
+//GET REST API METHOD TO FETCH HISTORIC DATA FOR A CITY
+app.get("/api/gethistoricweatherdata/:currentcity/:year/:month", (req,res)=>{
+    let currentCity = req.params.currentcity;
+    let selectedYear = req.params.year;
+    let selectedMonth = req.params.month;
+    let mongodbCollectionName = `${currentCity}_${selectedMonth}_${selectedYear}`;
+
+    mongodbHist.collection(`${mongodbCollectionName}`)
+    .find({}).toArray()
+    .then((wholeMonthHistWeatherDoc)=>{
+        res.status(200).json(wholeMonthHistWeatherDoc)
+    })
+    .catch(()=>{
+        res.status(500).json({error:'Could not get historic weather data from weather collection'})
+    })
+
 })

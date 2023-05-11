@@ -6,12 +6,13 @@ require("dotenv").config();
 
 //mongodb atlas
 const atlasURL = `mongodb+srv://${process.env.MONGOCLOUD_USERNAME}:${process.env.MONGOCLOUD_PASSWORD}@${process.env.MONGOCLOUD_CLUSTERNAME}/${process.env.MONGOCLOUD_HISTORIC_DATABASE}?retryWrites=true&w=majority`;
+const mClient = new MongoClient(atlasURL, { useNewUrlParser: true, useUnifiedTopology: true });
 
 let dbConnection;
 module.exports = {
     //To connect to a database
     connectToMongoHistDB: (cb)=>{
-        MongoClient.connect(atlasURL)
+        mClient.connect(atlasURL)
         .then((client)=>{
             dbConnection = client.db()
             //console.log("Connected to Mongo Historic climate record DB!")
