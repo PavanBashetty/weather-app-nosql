@@ -8,6 +8,7 @@ import aboutUsComp from './components/aboutUsPage.vue'
 import userDetailsComp from './components/userDetailsPage.vue'
 import futureWeatherReportComp from './components/futureWeatherReportPage.vue'
 import historicWeatherReportComp from './components/historicWeatherReportPage.vue'
+import severityCheckComp from './components/severityCheckPage.vue'
 
 const routes = [
     {
@@ -54,6 +55,11 @@ const routes = [
         name:'historicWeatherReportPage',
         path:'/historicweatherdata',
         component: historicWeatherReportComp
+    },
+    {
+        name:'severityCheckPage',
+        path:'/severitycheck',
+        component: severityCheckComp
     }
 ];
 
