@@ -5,6 +5,7 @@ const { connectToMongoDB, getDB } = require("./mongodb");
 const { connectToMongoHistDB, getHistDB } = require("./mongodbHist")
 const { json } = require("body-parser");
 const util = require("util");
+const neo4j = require('neo4j-driver');
 
 const app = express();
 app.use(express.json());
@@ -39,6 +40,11 @@ redisClient.on("connect", (err) => {
     console.log("Redis connection is success");
 })
 
+//NEO4J CONNECTION
+const driver = neo4j.driver(
+    'neo4j+s://1b34606c.databases.neo4j.io:7687',
+    neo4j.auth.basic('neo4j', 'Rjf-FzwdrDgNYatwfkKFDZ0JCq0Lhuyjjx5pbzIVh6s')
+  );
 
 //EXPRESS SERVER
 var port = process.env.PORT || 3000
@@ -311,5 +317,65 @@ app.get("/api/gethistoricweatherdata/:currentcity/:year/:month", (req,res)=>{
     .catch(()=>{
         res.status(500).json({error:'Could not get historic weather data from weather collection'})
     })
+
+})
+
+
+// GET REST API METHOD TO FETCH SEVERITY RELATED DATA FROM NEO4J DATABASE
+app.get("/api/getseveritydata/:currentcity/:severityrisk/:selecteddate",(req,res)=>{
+    let currentCity = req.params.currentcity;
+    let severityrisk = req.params.severityrisk;
+    let selectedDate = req.params.selecteddate;
+
+    if (new Date(selectedDate) >= new Date() && severityrisk > 40){
+        let cypherQuery = '';
+        switch (currentCity) {
+          case 'Mumbai':
+            cypherQuery = `
+              MATCH (parent)-[r]->(child)
+              WHERE parent.name = "Emergency Preparedness Mumbai"
+              OPTIONAL MATCH (child)-[r2]->(related)
+              RETURN parent, r, child, r2, related
+            `;
+            break;
+          case 'Montreal':
+            cypherQuery = `
+              MATCH (parent)-[r]->(child)
+              WHERE parent.name = "Emergency Preparedness Montreal"
+              OPTIONAL MATCH (child)-[r2]->(related)
+              RETURN parent, r, child, r2, related
+            `;
+            break;
+          default:
+            console.log('Cannot execute query for this city');
+            return;
+        }
+    
+        const session = driver.session();
+    
+        session
+          .run(cypherQuery)
+          .then(result => {
+            let output = result.records;
+            result.records.forEach(record => {
+              console.log(record.get('parent').properties);
+              console.log(record.get('child').properties);
+              console.log(record.get('r').properties);
+              console.log(record.get('related').properties);
+              console.log(record.get('r2').properties);
+            })
+    
+            res.status(200).json(output)
+          })
+          .catch(error => {
+            console.error(error);
+          })
+          .finally(() => {
+            session.close();
+            driver.close();
+          });
+    }else {
+      console.log('Cannot execute query due to invalid input');
+    }
 
 })
