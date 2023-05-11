@@ -17,6 +17,7 @@
             v-on:click="checkSevereRisk()">Submit</button>
     </div>
     <br />
+    <!--disabled for now-->
     <!-- <div>
         <ul v-for="(record, i) in neo4Jdata" :key="i">
             <li>{{ record }}</li>
