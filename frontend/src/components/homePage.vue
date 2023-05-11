@@ -21,7 +21,7 @@
 </div>
 <br />
 <div class="grid grid-cols-3 gap-0 bg-orange-100 text-gray-700 border-4">
-    <div class="p-0 grid grid-cols-2 gap-0 border-4">
+    <div class="p-0 grid grid-cols-2 gap-4 border-4">
         <div class="font-bold  bg-orange-100 text-gray-700">Min Temp:</div>
         <div>
             {{ completeWeatherData.tempmin }} 
@@ -37,22 +37,9 @@
             {{ completeWeatherData.temp }}
             <span v-if="measurementSystem == 'Metric'">°C</span><span v-else>°F</span>
         </div>
-        <div></div>
-        <div></div>
-        <div></div>
-        <div></div>
     </div>
-    <div class="border-4 p-0 grid grid-cols-2 gap-1">
-        <div class="font-bold bg-orange-100 text-gray-700">Humidity:</div>
-        <div>
-            {{ completeWeatherData.humidity }}
-            <span>g/m³</span>
-        </div>
-        <div class="font-bold bg-orange-100 text-gray-700">Snow:</div>
-        <div>
-            {{ completeWeatherData.snow }}
-            <span v-if="measurementSystem == 'Metric'">mm</span><span v-else>in</span>
-        </div>
+    <div class="border-4 p-0 grid grid-cols-2 gap-4">
+
         <div class="font-bold bg-orange-100 text-gray-700">Windspeed:</div>
         <div>
             {{ completeWeatherData.windspeed }}
@@ -61,7 +48,7 @@
         <div class="font-bold bg-orange-100 text-gray-700">Cloud cover:</div>
         <div>
             {{ completeWeatherData.cloudcover }}
-            <span v-if="measurementSystem == 'Metric'">oktas</span><span v-else>eighths</span>
+            <span>%</span>
         </div>
         <div class="font-bold bg-orange-100 text-gray-700">Visibility:</div>
         <div>
@@ -69,9 +56,23 @@
             <span v-if="measurementSystem == 'Metric'">km</span><span v-else>mi</span>
         </div>
     </div>
-    <!-- <div class="border-4 p-0">
-        google maps
-    </div> -->
+    <div class="border-4 p-0 grid grid-cols-2 gap-4">
+        <div class="font-bold bg-orange-100 text-gray-700">Precipitation:</div>
+        <div>
+            {{ completeWeatherData.precip }}
+            <span v-if="measurementSystem == 'Metric'">mm</span><span v-else>in</span>
+        </div>
+        <div class="font-bold bg-orange-100 text-gray-700">Humidity:</div>
+        <div>
+            {{ completeWeatherData.humidity }}
+            <span>%</span>
+        </div>
+        <div class="font-bold bg-orange-100 text-gray-700">Snow:</div>
+        <div>
+            {{ completeWeatherData.snow }}
+            <span v-if="measurementSystem == 'Metric'">mm</span><span v-else>in</span>
+        </div>
+    </div>
 </div>
 <br />
 <div class="border-4 p-0 grid grid-cols-2 gap-0">
@@ -122,15 +123,8 @@ export default {
             .then((res)=>{
                 let result = res.data;
                 this.measurementSystem = result.mSystem;
-                this.currentCity = result.personalizedWeatherDoc.address;
-                let fetchedWeatherData;
-                let todayDate = new Date().toISOString().split('T')[0];
-                for(let i = 0; i<result.personalizedWeatherDoc.days.length;i++){
-                    if(result.personalizedWeatherDoc.days[i].datetime == todayDate){
-                        fetchedWeatherData = result.personalizedWeatherDoc.days[i];
-                    }
-                }
-                //fetchedWeatherData = result.personalizedWeatherDoc.days[0];
+                let fetchedWeatherData = result.personalizedWeatherDoc;
+                this.currentCity = fetchedWeatherData.address;
                 if(this.measurementSystem == 'Metric'){
                     this.completeWeatherData = fetchedWeatherData
                 }else{
@@ -145,6 +139,7 @@ export default {
                         windspeed: this.windspeedKmtoMph(fetchedWeatherData.windspeed),
                         cloudcover: this.cloudcoverOctasToEight(fetchedWeatherData.cloudcover),
                         visibility: this.visibilityKmtoMiles(fetchedWeatherData.visibility),
+                        precip: this.snowMiliMetersToInches(fetchedWeatherData.precip),
                         sunrise: fetchedWeatherData.sunrise,
                         sunset: fetchedWeatherData.sunset,
                         solarradiation: fetchedWeatherData.solarradiation,
@@ -161,18 +156,11 @@ export default {
             await axios.get("/api/getsearchedcityweatherdata/"+this.email+"/"+this.searchCity)
             .then((res)=>{
                 let result = res.data;
-                console.log(result);
                 this.measurementSystem = result.mSystem;
-                this.currentCity = result.searchedCityWeatherDoc.address;
-                let fetchedWeatherData;
-                // let fetchedWeatherData = result.searchedCityWeatherDoc.days[0];
+                let fetchedWeatherData = result.searchedCityWeatherDoc;
+                this.currentCity = fetchedWeatherData.address;
                 this.completeWeatherData = {}
-                let todayDate = new Date().toISOString().split('T')[0];
-                for(let i=0; i<result.searchedCityWeatherDoc.days.length;i++){
-                    if(result.searchedCityWeatherDoc.days[i].datetime == todayDate){
-                        fetchedWeatherData = result.searchedCityWeatherDoc.days[i]
-                    }
-                }
+
                 if(this.measurementSystem == 'Metric'){
                     this.completeWeatherData = fetchedWeatherData
                 }else{
@@ -186,10 +174,12 @@ export default {
                         windspeed: this.windspeedKmtoMph(fetchedWeatherData.windspeed),
                         cloudcover: this.cloudcoverOctasToEight(fetchedWeatherData.cloudcover),
                         visibility: this.visibilityKmtoMiles(fetchedWeatherData.visibility),
+                        precip: this.snowMiliMetersToInches(fetchedWeatherData.precip),
                         sunrise: fetchedWeatherData.sunrise,
                         sunset: fetchedWeatherData.sunset,
                         solarradiation: fetchedWeatherData.solarradiation,
-                        description: fetchedWeatherData.description
+                        description: fetchedWeatherData.description,
+                        address: fetchedWeatherData.address
                     }
                 }
                 this.searchCity = ''
@@ -203,13 +193,13 @@ export default {
         toHistoricWeatherReportPage(){
             return this.$router.push({
                 name:'historicWeatherReportPage',
-                params:{cCity: this.currentCity}
+                params:{cCity: this.currentCity, mSystem: this.measurementSystem}
             })
         },
         toFutureWeatherReportPage(){
             return this.$router.push({
                 name:'futureWeatherReportPage',
-                params:{cCity: this.currentCity}
+                params:{cCity: this.currentCity, mSystem: this.measurementSystem}
             })
         },
         celsiusToFahrenheit(celsius){
@@ -236,7 +226,7 @@ export default {
             return (octas*0.03937).toFixed(2)
         },
         humidityMetToImp(metricHumidity){
-            return metricHumidity*100
+            return metricHumidity*1
         }
     },
     mounted(){

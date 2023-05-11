@@ -16,7 +16,6 @@
             <div class="hidden justify-between items-center w-full lg:flex lg:w-auto lg:order-2" id="mobile-menu-2">
                 <ul class="flex flex-col mt-4 font-medium lg:flex-row lg:space-x-4 lg:mt-0">
                     <li><button class="bg-gray-700 hover:bg-gray-600 text-white py-2 px-1 rounded" type="button" v-on:click="backToMainPage()">Home</button></li>
-                    <li><button class="bg-gray-700 hover:bg-gray-600 text-white py-2 px-1 rounded" type="button" v-on:click="NeoFourJ()">Check Severity</button></li>
                     <li><button class="bg-gray-700 hover:bg-gray-600 text-white py-2 px-1 rounded" type="button" v-on:click="getUserDetails()">{{userName}}</button></li>
                     <li><button class="bg-gray-700 hover:bg-gray-600 text-white py-2 px-1 rounded" type="button" v-on:click="logout()">Log out</button></li>
                 </ul>
@@ -40,9 +39,6 @@ export default {
     methods:{
         backToMainPage(){
             return this.$router.push({name:'homePage'})
-        },
-        NeoFourJ(){
-
         },
         getUserDetails(){
             return this.$router.push({name:'userDetailsPage'})
