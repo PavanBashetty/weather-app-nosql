@@ -44,7 +44,7 @@ redisClient.on("connect", (err) => {
 const driver = neo4j.driver(
     'neo4j+s://1b34606c.databases.neo4j.io:7687',
     neo4j.auth.basic('neo4j', 'Rjf-FzwdrDgNYatwfkKFDZ0JCq0Lhuyjjx5pbzIVh6s')
-  );
+);
 
 //EXPRESS SERVER
 var port = process.env.PORT || 3000
@@ -53,7 +53,7 @@ app.listen(port, () => {
 });
 
 
-                        //ROUTES
+//ROUTES
 //POST REST API METHOD TO ADD NEW USERS INTO THE DATABASE
 app.post("/api/signup", (req, res) => {
     let newUserEntry = req.body;
@@ -154,7 +154,7 @@ app.get("/api/getpersonalizedweatherdata/:email", (req, res) => {
             redisClient.get(hpersonalizedKey, (err, objFromRedis) => {
                 if (err) throw err;
                 if (objFromRedis !== null) {
-                    console.log("Current weather data picked from Redis SET")
+                    console.log("Current weather data for default city picked from Redis SET")
                     const personalizedWeatherDoc = JSON.parse(objFromRedis)
                     res.status(200).json({ personalizedWeatherDoc, mSystem })
                 } else {
@@ -171,13 +171,13 @@ app.get("/api/getpersonalizedweatherdata/:email", (req, res) => {
                             personalizedWeatherDoc['address'] = wholeWeatherDoc.address;
 
                             // original object is a nested object So if you wanna go with hset, either use a recurisve function to clone everything or don't send the whole object instead send only displayed data to frontend, it will be a simple object and can be easily stored in redis. Another option is to go with set but updating values in redis will be difficult, it works well if we are only using it to display
-                            
+
                             // [It is sending the whole thing because its just one object. This is the case for currentClimateRecordDB. Here, every city has only one object for each month. Within this, nested objects are present for each date. Whereas in HistoricClimateRecordDB, every city has one collection for each month and in each collection 30/31 objects are present, one for every date]
 
                             // So three options: 1. fetch only required fields 2. fetch all fields but store only required fields using hmset 3. use set instead of hset
                             redisClient.set(hpersonalizedKey, JSON.stringify(personalizedWeatherDoc))
                             redisClient.expire(hpersonalizedKey, 900)
-                            console.log("Current weather data picked from MongoDB");
+                            console.log("Current weather data for default city picked from MongoDB");
                             res.status(200).json({ personalizedWeatherDoc, mSystem })
                         })
                         .catch(() => {
@@ -210,21 +210,36 @@ app.get("/api/getsearchedcityweatherdata/:email/:searchcity", (req, res) => {
             }
             let year = new Date().getFullYear();
             let mongodbCollectionName = `${searchcity}_${month}_${year}`;
-            mongodb.collection(`${mongodbCollectionName}`)
-                .findOne({ address: searchcity, 'days.datetime': { $eq: `${todayDate}` } })
-                .then((searchedCityWholeWeatherDoc) => {
-                    let searchedCityWeatherDoc;
-                    for (let i = 0; i < searchedCityWholeWeatherDoc.days.length; i++) {
-                        if (searchedCityWholeWeatherDoc.days[i].datetime == todayDate) {
-                            searchedCityWeatherDoc = searchedCityWholeWeatherDoc.days[i]
-                        }
-                    }
-                    searchedCityWeatherDoc['address'] = searchedCityWholeWeatherDoc.address
+            let hpersonalizedSearchKey = `userEmailID:${emailID}:${searchcity}`;
+
+            redisClient.get(hpersonalizedSearchKey, (err, objFromRedis) => {
+                if (err) throw err
+                if (objFromRedis !== null) {
+                    console.log("Current weather data for searched city is picked from Redis SET");
+                    const searchedCityWeatherDoc = JSON.parse(objFromRedis);
                     res.status(200).json({ searchedCityWeatherDoc, mSystem })
-                })
-                .catch(() => {
-                    res.status(500).json({ error: 'Could not fetch searched city weather data from weather collection' })
-                })
+                } else {
+                    mongodb.collection(`${mongodbCollectionName}`)
+                        .findOne({ address: searchcity, 'days.datetime': { $eq: `${todayDate}` } })
+                        .then((searchedCityWholeWeatherDoc) => {
+                            let searchedCityWeatherDoc;
+                            for (let i = 0; i < searchedCityWholeWeatherDoc.days.length; i++) {
+                                if (searchedCityWholeWeatherDoc.days[i].datetime == todayDate) {
+                                    searchedCityWeatherDoc = searchedCityWholeWeatherDoc.days[i]
+                                }
+                            }
+                            searchedCityWeatherDoc['address'] = searchedCityWholeWeatherDoc.address
+                            redisClient.set(hpersonalizedSearchKey, JSON.stringify(searchedCityWeatherDoc))
+                            redisClient.expire(hpersonalizedSearchKey, 900)
+                            console.log("Current weather data for searched city is picked from MongoDB");
+                            res.status(200).json({ searchedCityWeatherDoc, mSystem })
+                        })
+                        .catch(() => {
+                            res.status(500).json({ error: 'Could not fetch searched city weather data from weather collection' })
+                        })
+                }
+            })
+
         })
         .catch(() => {
             res.status(500).json({ error: 'Could not fetch personalized data from user collection' })
@@ -284,98 +299,147 @@ app.get("/api/getfeatureweatherdata/:currentcity", (req, res) => {
     }
     let year = new Date().getFullYear();
     let mongodbCollectionName = `${currentCity}_${month}_${year}`;
+    //Ideally, even user's id or email should be included in key name so it would come handy only for that specific user
+    let hfutureKey = `futureData: ${currentCity}`
 
-    mongodb.collection(`${mongodbCollectionName}`)
-        .findOne({ address: currentCity })
-        .then((wholeWeatherDoc) => {
-            let futureWeatherDoc = []
-            for (let i = 0; i < wholeWeatherDoc.days.length; i++) {
-                if ((wholeWeatherDoc.days[i].datetime > todayDate) && futureWeatherDoc.length <= 10) {
-                    futureWeatherDoc.push(wholeWeatherDoc.days[i])
-                }
-            }
+    redisClient.get(hfutureKey, (err, objFromRedis) => {
+        if (err) throw err
+        if (objFromRedis !== null) {
+            console.log("Future data set is sent from Redis SET");
+            const futureWeatherDoc = JSON.parse(objFromRedis);
             res.status(200).json(futureWeatherDoc)
-        })
-        .catch(() => {
-            res.status(500).json({ error: 'Could not get future weather data from weather collection' })
-        })
+        }else{
+            mongodb.collection(`${mongodbCollectionName}`)
+            .findOne({ address: currentCity })
+            .then((wholeWeatherDoc) => {
+                let futureWeatherDoc = []
+                for (let i = 0; i < wholeWeatherDoc.days.length; i++) {
+                    if ((wholeWeatherDoc.days[i].datetime > todayDate) && futureWeatherDoc.length <= 10) {
+                        futureWeatherDoc.push(wholeWeatherDoc.days[i])
+                    }
+                }
+                redisClient.set(hfutureKey, JSON.stringify(futureWeatherDoc))
+                redisClient.expire(hfutureKey, 600)
+                console.log("Future data set is sent from MongoDB");
+                res.status(200).json(futureWeatherDoc)
+            })
+            .catch(() => {
+                res.status(500).json({ error: 'Could not get future weather data from weather collection' })
+            })
+        }
+    })
+    // mongodb.collection(`${mongodbCollectionName}`)
+    //     .findOne({ address: currentCity })
+    //     .then((wholeWeatherDoc) => {
+    //         let futureWeatherDoc = []
+    //         for (let i = 0; i < wholeWeatherDoc.days.length; i++) {
+    //             if ((wholeWeatherDoc.days[i].datetime > todayDate) && futureWeatherDoc.length <= 10) {
+    //                 futureWeatherDoc.push(wholeWeatherDoc.days[i])
+    //             }
+    //         }
+    //         res.status(200).json(futureWeatherDoc)
+    //     })
+    //     .catch(() => {
+    //         res.status(500).json({ error: 'Could not get future weather data from weather collection' })
+    //     })
 })
 
-  
+
 //GET REST API METHOD TO FETCH HISTORIC DATA FOR A CITY
-app.get("/api/gethistoricweatherdata/:currentcity/:year/:month", (req,res)=>{
+app.get("/api/gethistoricweatherdata/:currentcity/:year/:month", (req, res) => {
     let currentCity = req.params.currentcity;
     let selectedYear = req.params.year;
     let selectedMonth = req.params.month;
     let mongodbCollectionName = `${currentCity}_${selectedMonth}_${selectedYear}`;
+    let hHistoricKey = `historicData: ${currentCity}_${selectedYear}_${selectedMonth}`
 
-    mongodbHist.collection(`${mongodbCollectionName}`)
-    .find({}).toArray()
-    .then((wholeMonthHistWeatherDoc)=>{
-        res.status(200).json(wholeMonthHistWeatherDoc)
+    redisClient.get(hHistoricKey, (err, objFromRedis)=>{
+        if(err) throw err
+        if(objFromRedis !== null){
+            console.log("Historic data set is sent from Redis SET");
+            const wholeMonthHistWeatherDoc = JSON.parse(objFromRedis)
+            res.status(200).json(wholeMonthHistWeatherDoc)
+        }else{
+            mongodbHist.collection(`${mongodbCollectionName}`)
+            .find({}).toArray()
+            .then((wholeMonthHistWeatherDoc) => {
+                redisClient.set(hHistoricKey, JSON.stringify(wholeMonthHistWeatherDoc))
+                redisClient.expire(hHistoricKey, 600)
+                console.log("Historic data set is sent from MongoDB");
+                res.status(200).json(wholeMonthHistWeatherDoc)
+            })
+            .catch(() => {
+                res.status(500).json({ error: 'Could not get historic weather data from weather collection' })
+            })
+        }
     })
-    .catch(()=>{
-        res.status(500).json({error:'Could not get historic weather data from weather collection'})
-    })
+    // mongodbHist.collection(`${mongodbCollectionName}`)
+    //     .find({}).toArray()
+    //     .then((wholeMonthHistWeatherDoc) => {
+    //         res.status(200).json(wholeMonthHistWeatherDoc)
+    //     })
+    //     .catch(() => {
+    //         res.status(500).json({ error: 'Could not get historic weather data from weather collection' })
+    //     })
 
 })
 
 
 // GET REST API METHOD TO FETCH SEVERITY RELATED DATA FROM NEO4J DATABASE
-app.get("/api/getseveritydata/:currentcity/:severityrisk/:selecteddate",(req,res)=>{
+app.get("/api/getseveritydata/:currentcity/:severityrisk/:selecteddate", (req, res) => {
     let currentCity = req.params.currentcity;
     let severityrisk = req.params.severityrisk;
     let selectedDate = req.params.selecteddate;
 
-    if (new Date(selectedDate) >= new Date() && severityrisk > 40){
+    if (new Date(selectedDate) >= new Date() && severityrisk > 40) {
         let cypherQuery = '';
         switch (currentCity) {
-          case 'Mumbai':
-            cypherQuery = `
+            case 'Mumbai':
+                cypherQuery = `
               MATCH (parent)-[r]->(child)
               WHERE parent.name = "Emergency Preparedness Mumbai"
               OPTIONAL MATCH (child)-[r2]->(related)
               RETURN parent, r, child, r2, related
             `;
-            break;
-          case 'Montreal':
-            cypherQuery = `
+                break;
+            case 'Montreal':
+                cypherQuery = `
               MATCH (parent)-[r]->(child)
               WHERE parent.name = "Emergency Preparedness Montreal"
               OPTIONAL MATCH (child)-[r2]->(related)
               RETURN parent, r, child, r2, related
             `;
-            break;
-          default:
-            console.log('Cannot execute query for this city');
-            return;
+                break;
+            default:
+                console.log('Cannot execute query for this city');
+                return;
         }
-    
+
         const session = driver.session();
-    
+
         session
-          .run(cypherQuery)
-          .then(result => {
-            let output = result.records;
-            result.records.forEach(record => {
-              console.log(record.get('parent').properties);
-              console.log(record.get('child').properties);
-              console.log(record.get('r').properties);
-              console.log(record.get('related').properties);
-              console.log(record.get('r2').properties);
+            .run(cypherQuery)
+            .then(result => {
+                let output = result.records;
+                result.records.forEach(record => {
+                    console.log(record.get('parent').properties);
+                    console.log(record.get('child').properties);
+                    console.log(record.get('r').properties);
+                    console.log(record.get('related').properties);
+                    console.log(record.get('r2').properties);
+                })
+
+                res.status(200).json(output)
             })
-    
-            res.status(200).json(output)
-          })
-          .catch(error => {
-            console.error(error);
-          })
-          .finally(() => {
-            session.close();
-            driver.close();
-          });
-    }else {
-      console.log('Cannot execute query due to invalid input');
+            .catch(error => {
+                console.error(error);
+            })
+            .finally(() => {
+                session.close();
+                driver.close();
+            });
+    } else {
+        console.log('Cannot execute query due to invalid input');
     }
 
 })
